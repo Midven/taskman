@@ -1,0 +1,3 @@
+class TaskmanError < RuntimeError
+    
+end

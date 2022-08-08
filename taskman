@@ -1,0 +1,85 @@
+#!/usr/bin/env ruby
+
+require "bundler"
+Bundler.require
+# C'est bundler qui va gérer tout les require de l'app, pas besoin de les mettre dans d'autres fichiers
+
+TM_PATH = File.expand_path(File.join(__FILE__, "..") )
+=begin
+Permet d'avoir un chemin dynamique quel que soit l'endroit dans lequel on appel le fichier
+=end
+
+require "#{TM_PATH}/lib/task.rb"
+require "#{TM_PATH}/lib/command.rb"
+require "#{TM_PATH}/lib/ext.rb"
+require "#{TM_PATH}/lib/error.rb"
+
+
+# Notre code commence ici
+Task.load "#{TM_PATH}/conf/tasks.json"
+
+
+# Grâce au DSL que j'ai défini dans command.rb je peux faire appel beaucoup plus facilement a mes commandes
+Command.define do
+    
+    # On défini nos commandes, d'abord les arguments
+    args ":contenu (options...)"
+    desc "Crée une nouvelle tache."
+    # Ensuite les actions
+    action :add do |arguments|
+        Task.ajouter(arguments)
+        # On met le code de l'action
+    end
+    
+    args ""
+    desc "Supprime une tâche"
+    task_action :del do |task, arguments|
+        Task.supprimer task.id
+    end
+    
+    args ":filtres"
+    desc "Liste les tâches"
+    action :list do |arguments|
+        filters = arguments.inject({}) do |h,x|
+            k,v = x.split(":")
+            # avec le .inject transforme le tableau d'arguments en un hash
+            # d'abord je crée un hash vide avec l'inject ensuite pour chaque élément du tableau "exempleClé:exempleValeur", je fais un split
+            if v.nil?
+                h[:content] = k
+            else
+                h[k.to_sym] = v
+                # ensuite je crée un élément dans le hash avec comme clé le premier élément du split et comme valeur le deuxième élément du split
+                # ca deviendra "exempleClé"=>"exempleValeur"
+            end
+            
+            h
+        end
+        
+        Task.display filters
+    end
+    
+    args ""
+    desc "Supprime toutes les tâches"
+    action :clear do |arguments|
+        Task.clear
+    end
+end
+
+# Ancienne façon d'appeller les commandes
+# 
+# Command::Action.new('add', ':contenu (options...)', 'Crée une nouvelle tache.') do |arguments|
+#         Task.ajouter(arguments)
+# end.register!
+
+# Command::TaskAction.new('del', '', 'Supprime une tâche') do |task, args|
+#     Task.supprimer task.id
+# end.register!
+
+Command.launch!
+# lancer_commande?
+# Le point d'interrogation sous entend que la méthode renvoie un vrai ou faux, alors qu'un ! sous entend une exécution
+#  ( les deux sont optionnels )
+
+# parser_commande(command)
+# Task.display
+Task.save "#{TM_PATH}/conf/tasks.json"
